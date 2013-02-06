@@ -9,17 +9,13 @@ import (
 	"time"
 )
 
-/**
- * Global variables
- */
+// Global variables
 var (
 	Prefix string = "sess:"
 	Expire int    = 1800 // 30 minutes
 )
 
-/**
- * SessionCookie object
- */
+// SessionCookie object
 type SessionCookie struct {
 	name    string
 	cookie  *http.Cookie
@@ -27,9 +23,7 @@ type SessionCookie struct {
 	clredis redis.Conn
 }
 
-/**
- * Get value of session key
- */
+// Get value of session key
 func (sess *SessionCookie) Get(key_name string) string {
 	return fmt.Sprintf("%v", sess.values[key_name])
 }
