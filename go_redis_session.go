@@ -64,15 +64,15 @@ func (sess *SessionCookie) Destroy(w http.ResponseWriter) {
 /**
  * Connect to Redis
  */
-func Connect(ctype, host string) {
+func Connect(ctype, host string) error {
 	credis, err := redis.Dial(ctype, host)
 	if err != nil {
-		log.Printf("%s", err)
-		return
+		return err
 	}
 
 	// instance assign to global variable
 	cl_redis = credis
+	return nil
 }
 
 /**
