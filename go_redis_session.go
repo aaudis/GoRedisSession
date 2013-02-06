@@ -35,7 +35,7 @@ func (sess *SessionCookie) Get(key_name string) string {
 }
 
 /**
- * Setting new key/updating old
+ * Setting new key, updating old
  */
 func (sess *SessionCookie) Set(key_name string, key_value interface{}) {
 	sess.values[key_name] = key_value
@@ -72,7 +72,7 @@ func (sess *SessionCookie) Destroy(w http.ResponseWriter) {
 }
 
 /**
- * Connect to Redis
+ * Connect to Redis and returning instance of SessionCookie
  */
 func New(session_name string, ctype, host string) (*SessionCookie, error) {
 	// Creating new SessionCookie object
