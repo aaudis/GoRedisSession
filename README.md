@@ -6,6 +6,9 @@ Simple session storage in Redis
 $ go get github.com/aaudis/GedisSession
 ```
 
+## Documentation
+http://godoc.org/github.com/aaudis/GoRedisSession
+
 ## Simple usage
 ```go
 package main
