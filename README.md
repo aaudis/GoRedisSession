@@ -34,6 +34,8 @@ func main() {
 	if err != nil {
 		log.Printf("%s", err)
 	}
+
+	temp_sess.Database(5) // selecting Redis database
 	redis_session = temp_sess
 
 	http.HandleFunc("/", Root)

@@ -9,13 +9,17 @@ import (
 	"time"
 )
 
-// Global variables
+/* 
+	Global variables
+*/
 var (
 	Prefix string = "sess:"
 	Expire int    = 1800 // 30 minutes
 )
 
-// SessionCookie object
+/*
+	SessionCookie object
+*/
 type SessionCookie struct {
 	name    string
 	cookie  *http.Cookie
@@ -23,14 +27,16 @@ type SessionCookie struct {
 	clredis redis.Conn
 }
 
-// Get value of session key
+/*
+	Get value of session key
+*/
 func (sess *SessionCookie) Get(key_name string) string {
 	return fmt.Sprintf("%v", sess.values[key_name])
 }
 
-/**
- * Setting new key, updating old
- */
+/*
+	Setting new key, updating old
+*/
 func (sess *SessionCookie) Set(key_name string, key_value interface{}) {
 	sess.values[key_name] = key_value
 	_, err := sess.clredis.Do("HSET", Prefix+sess.cookie.Value, key_name, key_value)
@@ -40,9 +46,9 @@ func (sess *SessionCookie) Set(key_name string, key_value interface{}) {
 	expire_sess(sess) // reset expire counter
 }
 
-/**
- * Removing key
- */
+/*
+	Removing key
+*/
 func (sess *SessionCookie) Rem(key_name string) {
 	delete(sess.values, key_name)
 	_, err := sess.clredis.Do("HDEL", Prefix+sess.cookie.Value, key_name)
@@ -52,9 +58,9 @@ func (sess *SessionCookie) Rem(key_name string) {
 	expire_sess(sess) // reset expire counter
 }
 
-/**
- * Destroy Session/Cookie
- */
+/*
+	Destroy Session/Cookie
+*/
 func (sess *SessionCookie) Destroy(w http.ResponseWriter) {
 	sess.cookie.MaxAge = -1
 	sess.values = make(map[string]interface{})
@@ -65,9 +71,19 @@ func (sess *SessionCookie) Destroy(w http.ResponseWriter) {
 	http.SetCookie(w, sess.cookie)
 }
 
-/**
- * Connect to Redis and returning instance of SessionCookie
- */
+/*
+	Set Redis database
+*/
+func (sess *SessionCookie) Database(db int) {
+	_, err := sess.clredis.Do("SELECT", db)
+	if err != nil {
+		log.Printf("%s", err)
+	}
+}
+
+/*
+	Connect to Redis and returning instance of SessionCookie
+*/
 func New(session_name string, ctype, host string) (*SessionCookie, error) {
 	// Creating new SessionCookie object
 	sess := new(SessionCookie)
@@ -85,9 +101,9 @@ func New(session_name string, ctype, host string) (*SessionCookie, error) {
 	return sess, nil
 }
 
-/**
- * Get Session - auto create Session/Cookie if not found
- */
+/*
+	Get Session - auto create Session/Cookie if not found
+*/
 func (sess *SessionCookie) Session(w http.ResponseWriter, r *http.Request) *SessionCookie {
 
 	// Getting cookie
@@ -137,9 +153,9 @@ func (sess *SessionCookie) Session(w http.ResponseWriter, r *http.Request) *Sess
 	return sess
 }
 
-/**
- * Set Session key expire
- */
+/*
+	Set Session key expire
+*/
 func expire_sess(sess *SessionCookie) {
 	_, e := sess.clredis.Do("EXPIRE", Prefix+sess.cookie.Value, Expire)
 	if e != nil {
@@ -147,9 +163,9 @@ func expire_sess(sess *SessionCookie) {
 	}
 }
 
-/**
- * New cookie ID generator
- */
+/*
+	New cookie ID generator
+*/
 func get_random_value() string {
 	rand.Seed(time.Now().UnixNano())
 	c := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
