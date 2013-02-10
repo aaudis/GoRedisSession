@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	redis_session *rsess.SessionCookie
+	redis_session *rsess.SessionConnect
 )
 
 func main() {
@@ -30,13 +30,12 @@ func main() {
 	rsess.Expire = 1800    // 30 minute session expiration
 
 	// Connecting to Redis and creating storage instance
-	temp_sess, err := rsess.New("sid", "tcp", "127.0.0.1:6379")
+	temp_sess, err := rsess.New("sid", 0, "tcp", "127.0.0.1:6379")
 	if err != nil {
 		log.Printf("%s", err)
 	}
 
-	temp_sess.Database(5) // selecting Redis database
-	redis_session = temp_sess
+	redis_session = temp_sess // assing to global variable
 
 	http.HandleFunc("/", Root)
 	http.HandleFunc("/get", Get)

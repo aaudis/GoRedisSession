@@ -13,18 +13,25 @@ import (
 	Global variables
 */
 var (
-	Prefix string = "sess:"
-	Expire int    = 1800 // 30 minutes
+	Prefix  string = "sess:"
+	Expire  int    = 1800 // 30 minutes
+	clredis redis.Conn
 )
+
+/*
+	Connection object
+*/
+type SessionConnect struct {
+	session_id string
+}
 
 /*
 	SessionCookie object
 */
 type SessionCookie struct {
-	name    string
-	cookie  *http.Cookie
-	values  map[string]interface{}
-	clredis redis.Conn
+	name   string
+	cookie *http.Cookie
+	values map[string]interface{}
 }
 
 /*
@@ -39,7 +46,7 @@ func (sess *SessionCookie) Get(key_name string) string {
 */
 func (sess *SessionCookie) Set(key_name string, key_value interface{}) {
 	sess.values[key_name] = key_value
-	_, err := sess.clredis.Do("HSET", Prefix+sess.cookie.Value, key_name, key_value)
+	_, err := clredis.Do("HSET", Prefix+sess.cookie.Value, key_name, key_value)
 	if err != nil {
 		log.Printf("%s", err)
 	}
@@ -51,7 +58,7 @@ func (sess *SessionCookie) Set(key_name string, key_value interface{}) {
 */
 func (sess *SessionCookie) Rem(key_name string) {
 	delete(sess.values, key_name)
-	_, err := sess.clredis.Do("HDEL", Prefix+sess.cookie.Value, key_name)
+	_, err := clredis.Do("HDEL", Prefix+sess.cookie.Value, key_name)
 	if err != nil {
 		log.Printf("%s", err)
 	}
@@ -64,7 +71,7 @@ func (sess *SessionCookie) Rem(key_name string) {
 func (sess *SessionCookie) Destroy(w http.ResponseWriter) {
 	sess.cookie.MaxAge = -1
 	sess.values = make(map[string]interface{})
-	_, err := sess.clredis.Do("DEL", Prefix+sess.cookie.Value)
+	_, err := clredis.Do("DEL", Prefix+sess.cookie.Value)
 	if err != nil {
 		log.Printf("%s", err)
 	}
@@ -75,7 +82,7 @@ func (sess *SessionCookie) Destroy(w http.ResponseWriter) {
 	Set Redis database
 */
 func (sess *SessionCookie) Database(db int) {
-	_, err := sess.clredis.Do("SELECT", db)
+	_, err := clredis.Do("SELECT", db)
 	if err != nil {
 		log.Printf("%s", err)
 	}
@@ -84,48 +91,61 @@ func (sess *SessionCookie) Database(db int) {
 /*
 	Connect to Redis and returning instance of SessionCookie
 */
-func New(session_name string, ctype, host string) (*SessionCookie, error) {
-	// Creating new SessionCookie object
-	sess := new(SessionCookie)
-	sess.name = session_name
-	sess.values = make(map[string]interface{})
+func New(session_name string, database int, ctype, host string) (*SessionConnect, error) {
+	// session ID name
+	temp_connection := new(SessionConnect)
+	temp_connection.session_id = session_name
 
-	// Redis stuff
+	// connecting to redis
 	credis, err := redis.Dial(ctype, host)
 	if err != nil {
-		return sess, err
+		return nil, err
 	}
 
-	// instance assign to global variable
-	sess.clredis = credis
-	return sess, nil
+	// Select Redis DB
+	def := 0
+	if database > 0 {
+		def = database
+	}
+	_, e := credis.Do("SELECT", def)
+	if e != nil {
+		log.Printf("%s", e)
+	}
+
+	// assign Redis connection
+	clredis = credis
+	return temp_connection, nil
 }
 
 /*
 	Get Session - auto create Session/Cookie if not found
 */
-func (sess *SessionCookie) Session(w http.ResponseWriter, r *http.Request) *SessionCookie {
+func (conn *SessionConnect) Session(w http.ResponseWriter, r *http.Request) *SessionCookie {
+	// New cookie object
+	t_sess := new(SessionCookie)
+	t_sess.name = conn.session_id
+	t_sess.values = make(map[string]interface{})
 
 	// Getting cookie
-	cookie, err := r.Cookie(sess.name)
+	cookie, err := r.Cookie(t_sess.name)
 	if err != http.ErrNoCookie && err != nil {
 		log.Printf("%s", err)
 	}
 	if cookie == nil {
 		// Setting new cookie, no cookie found
 		n_cookie := &http.Cookie{
-			Name:    sess.name,
+			Name:    t_sess.name,
 			Value:   get_random_value(),
 			Path:    "/",
 			MaxAge:  Expire,
 			Expires: time.Unix(time.Now().Unix()+int64(Expire), 0),
 		}
-		sess.cookie = n_cookie
+		t_sess.cookie = n_cookie
 	} else {
 		// Cookie found, getting data from Redis
-		sess.cookie = cookie
+		t_sess.cookie = cookie
 
-		do_req, err := sess.clredis.Do("HGETALL", Prefix+sess.cookie.Value)
+		do_req, err := clredis.Do("HGETALL", Prefix+t_sess.cookie.Value)
 		if err != nil {
 			log.Printf("%s", err)
 		}
@@ -142,22 +162,25 @@ func (sess *SessionCookie) Session(w http.ResponseWriter, r *http.Request) *Sess
 				log.Printf("%s", err)
 			}
 			v = values
-			sess.values[key] = value
+			t_sess.values[key] = value
 		}
+
+		// reset expiration
+		expire_sess(t_sess)
 	}
 
 	// Set coookie
-	http.SetCookie(w, sess.cookie)
+	http.SetCookie(w, t_sess.cookie)
 
 	// return SessionCookie instance
-	return sess
+	return t_sess
 }
 
 /*
 	Set Session key expire
 */
 func expire_sess(sess *SessionCookie) {
-	_, e := sess.clredis.Do("EXPIRE", Prefix+sess.cookie.Value, Expire)
+	_, e := clredis.Do("EXPIRE", Prefix+sess.cookie.Value, Expire)
 	if e != nil {
 		log.Printf("%s", e)
 	}
