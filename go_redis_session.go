@@ -19,7 +19,7 @@ var (
 )
 
 /*
-	Connection object
+	SessionConnect object
 */
 type SessionConnect struct {
 	session_id string
@@ -79,17 +79,7 @@ func (sess *SessionCookie) Destroy(w http.ResponseWriter) {
 }
 
 /*
-	Set Redis database
-*/
-func (sess *SessionCookie) Database(db int) {
-	_, err := clredis.Do("SELECT", db)
-	if err != nil {
-		log.Printf("%s", err)
-	}
-}
-
-/*
-	Connect to Redis and returning instance of SessionCookie
+	Connect to Redis and returning instance of SessionConnect
 */
 func New(session_name string, database int, ctype, host string) (*SessionConnect, error) {
 	// session ID name
@@ -118,7 +108,7 @@ func New(session_name string, database int, ctype, host string) (*SessionConnect
 }
 
 /*
-	Get Session - auto create Session/Cookie if not found
+	Get Session - auto create Session and Cookie if not found
 */
 func (conn *SessionConnect) Session(w http.ResponseWriter, r *http.Request) *SessionCookie {
 	// New cookie object
