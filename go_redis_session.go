@@ -70,6 +70,7 @@ func (sess *SessionCookie) Rem(key_name string) {
 */
 func (sess *SessionCookie) Destroy(w http.ResponseWriter) {
 	sess.cookie.MaxAge = -1
+	sess.cookie.Expires = time.Now().AddDate(0, 0, -1)
 	sess.values = make(map[string]interface{})
 	_, err := clredis.Do("DEL", Prefix+sess.cookie.Value)
 	if err != nil {
