@@ -3,7 +3,7 @@ Simple session storage in Redis
 
 ## Install
 ```bash
-$ go get github.com/aaudis/GedisSession
+$ go get github.com/aaudis/GoRedisSession
 ```
 
 ## Documentation
