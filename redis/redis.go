@@ -90,7 +90,7 @@
 //      }
 //  }
 //
-package redis
+package rsess_redis_connector
 
 import (
 	"flag"
