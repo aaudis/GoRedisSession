@@ -2,7 +2,7 @@ package rsess
 
 import (
 	"fmt"
-	redis "github.com/aaudis/GoRedisSession/redis"
+	rsess_redis_connector "github.com/aaudis/GoRedisSession/redis"
 	"log"
 	"math/rand"
 	"net/http"
@@ -15,7 +15,7 @@ import (
 var (
 	Prefix  string = "sess:"
 	Expire  int64  = 1800 // 30 minutes
-	clredis redis.Client
+	clredis rsess_redis_connector.Client
 )
 
 /*
@@ -88,8 +88,8 @@ func New(session_name string, database int, host string, port int) (*SessionConn
 	temp_connection.session_id = session_name
 
 	// connecting to redis
-	tmp_redis := redis.DefaultSpec().Db(database).Host(host).Port(port)
-	tmp_client, e := redis.NewSynchClientWithSpec(tmp_redis)
+	tmp_redis := rsess_redis_connector.DefaultSpec().Db(database).Host(host).Port(port)
+	tmp_client, e := rsess_redis_connector.NewSynchClientWithSpec(tmp_redis)
 	if e != nil {
 		log.Printf("%s", e)
 		return nil, e
