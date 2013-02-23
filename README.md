@@ -30,7 +30,7 @@ func main() {
 	rsess.Expire = 1800    // 30 minute session expiration
 
 	// Connecting to Redis and creating storage instance
-	temp_sess, err := rsess.New("sid", 0, "tcp", "127.0.0.1:6379")
+	temp_sess, err := rsess.New("sid", 0, "127.0.0.1", 6379)
 	if err != nil {
 		log.Printf("%s", err)
 	}
@@ -40,24 +40,35 @@ func main() {
 	http.HandleFunc("/", Root)
 	http.HandleFunc("/get", Get)
 	http.HandleFunc("/set", Set)
+	http.HandleFunc("/des", Des)
 	http.ListenAndServe(":8888", nil)
 }
 
 func Root(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "text/html")
 	fmt.Fprintf(w, `
-  		Redis session storage example:<br><br>
-  		<a href="/set">Store key in session</a><br>
-  		<a href="/get">Get key value from session</a>
-  	`)
+        Redis session storage example:<br><br>
+        <a href="/set">Store key in session</a><br>
+        <a href="/get">Get key value from session</a><br>
+        <a href="/des">Destroy session</a>
+    `)
 }
 
+// Destroy session
+func Des(w http.ResponseWriter, r *http.Request) {
+	s := redis_session.Session(w, r)
+	s.Destroy(w)
+	fmt.Fprintf(w, "Session deleted!")
+}
+
+// Set variable to session
 func Set(w http.ResponseWriter, r *http.Request) {
 	s := redis_session.Session(w, r)
-	s.Set("UserID", 1000)
+	s.Set("UserID", "1000")
 	fmt.Fprintf(w, "Setting session variable done!")
 }
 
+// Get variable from session
 func Get(w http.ResponseWriter, r *http.Request) {
 	s := redis_session.Session(w, r)
 	fmt.Fprintf(w, "Value %s", s.Get("UserID"))
