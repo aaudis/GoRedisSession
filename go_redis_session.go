@@ -1,8 +1,8 @@
 package rsess
 
 import (
-	redis "./redis"
 	"fmt"
+	redis "github.com/aaudis/GoRedisSession/redis"
 	"log"
 	"math/rand"
 	"net/http"
