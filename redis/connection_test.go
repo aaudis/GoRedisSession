@@ -1,6 +1,6 @@
 // REVU - whitebox testing of internal comps -- OK.
 
-package rsess_redis_connector
+package redis
 
 import (
 	"log"

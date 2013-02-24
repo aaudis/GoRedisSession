@@ -17,7 +17,7 @@
 // - If error is via panic, then it must be a SystemError
 // - If SystemError and with cause, the cause must be std.lib or 3rd party
 
-package rsess_redis_connector
+package redis
 
 import (
 	"bufio"
