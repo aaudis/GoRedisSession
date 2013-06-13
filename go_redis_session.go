@@ -69,14 +69,25 @@ func (sess *SessionCookie) Rem(key_name string) {
 	Destroy Session/Cookie
 */
 func (sess *SessionCookie) Destroy(w http.ResponseWriter) {
-	sess.cookie.MaxAge = -1
-	sess.cookie.Expires = time.Now().AddDate(0, 0, -1)
+	//sess.cookie.MaxAge = -1
+	//sess.cookie.Expires = time.Now().UTC().AddDate(-1, 0, 0)
 	sess.values = make(map[string]string)
 	_, err := clredis.Del(Prefix + sess.cookie.Value)
 	if err != nil {
 		log.Printf("%s", err)
 	}
-	http.SetCookie(w, sess.cookie)
+
+	n_cookie := &http.Cookie{
+		Name:     sess.name,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   int(Expire),
+		Expires:  time.Now().UTC().AddDate(-1, 0, 0),
+		HttpOnly: true,
+		Unparsed: []string{sess.name + "="},
+	}
+
+	w.Header().Add("Set-Cookie", n_cookie.String())
 }
 
 /*
@@ -101,6 +112,13 @@ func New(session_name string, database int, host string, port int) (*SessionConn
 }
 
 /*
+	Save session
+*/
+func (sess *SessionCookie) Save(w http.ResponseWriter) {
+	w.Header().Add("Set-Cookie", sess.cookie.String())
+}
+
+/*
 	Get Session - auto create Session and Cookie if not found
 */
 func (conn *SessionConnect) Session(w http.ResponseWriter, r *http.Request) *SessionCookie {
@@ -109,26 +127,42 @@ func (conn *SessionConnect) Session(w http.ResponseWriter, r *http.Request) *Ses
 	t_sess.name = conn.session_id
 	t_sess.values = make(map[string]string)
 
-	// Getting cookie
-	cookie, err := r.Cookie(t_sess.name)
-	if err != http.ErrNoCookie && err != nil {
-		log.Printf("%s", err)
-	}
-	if cookie == nil {
-		// Setting new cookie, no cookie found
-		n_cookie := &http.Cookie{
-			Name:    t_sess.name,
-			Value:   get_random_value(),
-			Path:    "/",
-			MaxAge:  int(Expire),
-			Expires: time.Unix(time.Now().Unix()+Expire, 0),
+	// FIX get cookie value ( I dont know why I need to do this )
+	cookie_value := ""
+	for _, item := range r.Cookies() {
+		if item.Name == t_sess.name {
+			cookie_value = item.Value
 		}
+	}
+
+	// Getting cookie
+	// cookie, err := r.Cookie(t_sess.name)
+	// if err != http.ErrNoCookie && err != nil {
+	// 	log.Printf("%s", err)
+	// }
+	//if cookie == nil {
+	if cookie_value == "" {
+		// Setting new cookie, no cookie found
+		new_sid := get_random_value()
+		n_cookie := &http.Cookie{
+			Name:  t_sess.name,
+			Value: new_sid,
+			Path:  "/",
+			//Domain:   "127.0.0.1",
+			MaxAge:   int(Expire),
+			Expires:  time.Unix(time.Now().UTC().Unix()+Expire, 0),
+			HttpOnly: true,
+			Unparsed: []string{t_sess.name + "=" + new_sid},
+		}
+
 		t_sess.cookie = n_cookie
 	} else {
 		// Cookie found, getting data from Redis
-		t_sess.cookie = cookie
+		t_sess.cookie, _ = r.Cookie(t_sess.name)
+		t_sess.cookie.Expires = time.Unix(time.Now().Unix()+Expire, 0)
 
-		req, err := clredis.Hgetall(Prefix + t_sess.cookie.Value)
+		//req, err := clredis.Hgetall(Prefix + t_sess.cookie.Value)
+		req, err := clredis.Hgetall(Prefix + cookie_value)
 		if err != nil {
 			log.Printf("%s", err)
 		}
@@ -150,8 +184,33 @@ func (conn *SessionConnect) Session(w http.ResponseWriter, r *http.Request) *Ses
 		expire_sess(t_sess)
 	}
 
-	// Set coookie
-	http.SetCookie(w, t_sess.cookie)
+	if cookie_value == "" {
+		n_cookie := &http.Cookie{
+			Name:  t_sess.name,
+			Value: t_sess.cookie.Value,
+			Path:  "/",
+			//Domain:   "127.0.0.1",
+			MaxAge:   int(Expire),
+			Expires:  time.Unix(time.Now().UTC().Unix()+Expire, 0),
+			HttpOnly: true,
+			Unparsed: []string{t_sess.name + "=" + t_sess.cookie.Value},
+		}
+
+		w.Header().Add("Set-Cookie", n_cookie.String())
+	} else {
+		n_cookie := &http.Cookie{
+			Name:  t_sess.name,
+			Value: t_sess.cookie.Value,
+			Path:  "/",
+			//Domain:   "127.0.0.1",
+			MaxAge:   int(Expire),
+			Expires:  time.Unix(time.Now().UTC().Unix()+Expire, 0),
+			HttpOnly: true,
+			Unparsed: []string{t_sess.name + "=" + t_sess.cookie.Value},
+		}
+
+		w.Header().Add("Set-Cookie", n_cookie.String())
+	}
 
 	// return SessionCookie instance
 	return t_sess
